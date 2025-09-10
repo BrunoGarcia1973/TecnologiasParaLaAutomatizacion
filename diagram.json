@@ -1,0 +1,53 @@
+{
+ "version": 1,
+ "author": "Automatización y Robótica Inacap",
+ "editor": "wokwi",
+ "parts": [
+ { "type": "board-esp32-devkit-v1", "id": "esp", "top": -12.32, "left": 24, "attrs": {} },
+{ "type": "wokwi-led", "id": "led1", "top": 63.6, "left": -92.2, "attrs": { "color": "red" } },
+ {
+ "type": "wokwi-led",
+ "id": "led2",
+ "top": 82.8,
+ "left": -130.6,
+ "attrs": { "color": "red" }
+ },
+ {
+ "type": "wokwi-resistor",
+ "id": "r1",
+ "top": 119.15,
+ "left": -67.2,
+ "attrs": { "value": "220" }
+ },
+ {
+ "type": "wokwi-resistor",
+ "id": "r2",
+ "top": 99.95,
+ "left": -48,
+ "attrs": { "value": "220" }
+ },
+ { "type": "wokwi-gnd", "id": "gnd1", "top": 134.4, "left": -125.4, "attrs": {} },
+ { "type": "wokwi-gnd", "id": "gnd2", "top": 124.8, "left": -87, "attrs": {} },
+ {
+ "type": "wokwi-pushbutton-6mm",
+ "id": "btn1",
+ "top": 74.6,
+ "left": 153.6,
+ "attrs": { "color": "green" }
+ },
+ { "type": "wokwi-gnd", "id": "gnd3", "top": 124.8, "left": 143.4, "attrs": {} }
+ ],
+ "connections": [
+ [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+ [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+ [ "gnd2:GND", "led1:C", "black", [ "v0" ] ],
+ [ "gnd1:GND", "led2:C", "black", [ "v-9.6" ] ],
+ [ "led1:A", "r2:1", "green", [ "v0" ] ],
+ [ "led2:A", "r1:1", "green", [ "v0" ] ],
+ [ "r2:2", "esp:D14", "green", [ "v0" ] ],
+ [ "r1:2", "esp:D12", "green", [ "v0", "h18", "v-9.6" ] ],
+ [ "btn1:1.l", "esp:D5", "green", [ "h0" ] ],
+ [ "btn1:2.l", "gnd3:GND", "green", [ "h0" ] ]
+ ],
+ "dependencies": {}
+}
