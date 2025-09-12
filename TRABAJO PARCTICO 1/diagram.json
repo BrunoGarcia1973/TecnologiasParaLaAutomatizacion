@@ -54,6 +54,8 @@
     [ "led1:C", "esp:GND.1", "green", [ "v0" ] ],
     [ "led2:A", "esp:5", "green", [ "v0" ] ],
     [ "led2:C", "esp:GND.3", "green", [ "v0" ] ]
+    
+
   ],
   "dependencies": {}
 }
