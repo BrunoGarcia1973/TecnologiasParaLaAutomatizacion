@@ -265,23 +265,26 @@ void handleVentilationAndIrrigation() {
 }
 
 void handleButton() {
-  // Ignorar botón durante los primeros ms
   if (millis() < ignoreButtonUntil) return;
 
   int reading = digitalRead(BUTTON_PIN);
-  Serial.print("Button reading: ");
-  Serial.println(reading);
 
-  // Debounce simple
-  if (reading != buttonState && (millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
-    if (reading == LOW) { // flanco de presion
-      screen = (screen == 1) ? 2 : 1;
-      screenChanged = true;
-      Serial.print("Pantalla cambiada a: ");
-      Serial.println(screen);
-    }
-    buttonState = reading;
+  // Detectar cambios de estado con debounce
+  if (reading != lastButtonReading) {
     lastDebounceTime = millis();
+    lastButtonReading = reading;
+  }
+
+  if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == LOW) { // Botón presionado
+        screen = (screen == 1) ? 2 : 1;
+        screenChanged = true;
+        Serial.print("Pantalla cambiada a: ");
+        Serial.println(screen);
+      }
+    }
   }
 }
 
