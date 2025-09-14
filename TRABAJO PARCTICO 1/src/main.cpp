@@ -188,7 +188,7 @@ void updateDisplay() {
       display.setTextSize(1);
       display.setCursor(0, 56);
       display.print("Modo: ");
-      display.print(manualMode ? "MANUAL" : "AUTO");
+      display.print(manualMode ? "manual" : "auto");
       break;
 
     case MENU_TEMP_DISPLAY:
@@ -277,34 +277,36 @@ void updateDisplay() {
       display.setTextSize(1);
       display.setCursor(0, 42);
       display.println("Usar potenciometro");
-      display.setCursor(0, 54);
-      display.println("o comando TEMP");
       break;
 
     case MENU_CONFIG_HUM:
       display.println("CONFIG HUMEDAD");
       display.setTextSize(2);
       display.setCursor(0, 18);
-      display.print("Umbral:");
-      display.print(humThreshold);
-      display.println("%");
+      if (!isnan(currentHum)) {
+        display.print("H: ");
+        display.print(currentHum, 1);
+        display.print(" %");
+      } else {
+        display.print("H: --.- %");
+      }
       display.setTextSize(1);
       display.setCursor(0, 42);
-      display.println("Comando: HUM <valor>");
+      display.print("Umbral Fijo: ");
+      display.print(humThreshold);
+      display.println("%");
       display.setCursor(0, 54);
-      display.println("Rango: 20-80%");
+      display.println("Usar potenciometro");
       break;
 
     case MENU_MANUAL_VENT:
       display.println("CONTROL VENT");
       display.setTextSize(2);
       display.setCursor(0, 18);
-      display.print("Estado: ");
+      display.print("Estado:");
       display.print(ventState ? "ON" : "OFF");
       display.setTextSize(1);
       display.setCursor(0, 42);
-      display.println("Comando: VENT ON/OFF");
-      display.setCursor(0, 54);
       display.print("Manual: ");
       display.print(manualVentOverride ? "SI" : "NO");
       break;
@@ -313,14 +315,14 @@ void updateDisplay() {
       display.println("CONTROL RIEGO");
       display.setTextSize(2);
       display.setCursor(0, 18);
-      display.print("Estado: ");
+      display.print("Riego: ");
       display.print(watering ? "ON" : "OFF");
       display.setTextSize(1);
       display.setCursor(0, 42);
-      display.println("Comando: RIEGO ON/OFF");
-      display.setCursor(0, 54);
       display.print("Manual: ");
       display.print(manualRiegoOverride ? "SI" : "NO");
+      display.setCursor(0, 54);
+      display.println("Usar potenciometro");
       break;
   }
 
@@ -345,8 +347,26 @@ void readSensors() {
 
     // Leer potenciómetro (ADC 12-bit: 0..4095)
     int potRaw = analogRead(POT_PIN);
-    // Mapear a 10..50°C (ajustable)
-    tempReference = (potRaw / 4095.0f) * 40.0f + 10.0f;
+    
+    // Modificar diferentes variables según el menú actual
+    if (currentMenu == MENU_CONFIG_HUM) {
+      // En configuración de humedad, simular humedad modificada (40..60%)
+      currentHum = (potRaw / 4095.0f) * 20.0f + 40.0f;
+    } else if (currentMenu == MENU_MANUAL_RIEGO) {
+      // En control manual de riego, activar/desactivar según potenciómetro
+      if (potRaw > 2047) { // Más de la mitad
+        manualRiegoOverride = true;
+        watering = true;
+        manualMode = true;
+      } else {
+        manualRiegoOverride = true;
+        watering = false;
+        manualMode = true;
+      }
+    } else {
+      // En otros menús, mapear a 10..50°C (temperatura)
+      tempReference = (potRaw / 4095.0f) * 40.0f + 10.0f;
+    }
     sensorsUpdated = true;
   }
 }
@@ -470,14 +490,14 @@ void handleSerialCommands() {
     }
     else if (command.startsWith("HUM ")) {
       int newHum = command.substring(4).toInt();
-      if (newHum >= 20 && newHum <= 80) {
+      if (newHum >= 40 && newHum <= 60) {
         humThreshold = newHum;
         Serial.print("Umbral de humedad configurado a: ");
         Serial.print(newHum);
         Serial.println("%");
         menuChanged = true;
       } else {
-        Serial.println("Error: Humedad debe estar entre 20-80%");
+        Serial.println("Error: Humedad debe estar entre 40-60%");
       }
     }
     else if (command == "VENT ON") {
