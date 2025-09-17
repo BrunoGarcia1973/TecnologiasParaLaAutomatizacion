@@ -329,6 +329,10 @@ void readSensors() {
         manualRiegoOverride = true;
         watering = false;
       }
+    } else if (currentMenu == MENU_MANUAL_VENT) {
+      // control manual de ventilación
+      manualVentOverride = true;
+      ventState = (potRaw > 2047);
     } else if (currentMenu == MENU_CONFIG_TEMP) {
       tempReference = (potRaw / 4095.0f) * 40.0f + 10.0f;
     }
