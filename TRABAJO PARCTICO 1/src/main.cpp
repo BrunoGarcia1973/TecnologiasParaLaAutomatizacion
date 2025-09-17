@@ -1,19 +1,11 @@
-/*
-  Invernadero ESP32 - versión mejorada
-  - Histeresis en ventilación
-  - Actualiza OLED sólo cuando hace falta
-  - Manejo correcto de eventos de riego (prevWatering)
-  - Configura atenuación ADC para el potenciómetro
-*/
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <DHT.h>
-#include "esp_system.h" // para esp_random()
+#include "esp_system.h" 
 
-// Pines (ajustables)
+// Pines
 #define DHTPIN         4
 #define DHTTYPE        DHT22
 #define LED_VENT_PIN   2
@@ -33,9 +25,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 DHT dht(DHTPIN, DHTTYPE);
 
 // Tiempos
-const unsigned long DHT_INTERVAL = 2000; // ms
-const unsigned long BLINK_INTERVAL = 500; // ms para riego
-const unsigned long DISPLAY_INTERVAL = 700; // ms mínimo entre updates de pantalla
+const unsigned long DHT_INTERVAL = 2000;
+const unsigned long BLINK_INTERVAL = 500; 
+const unsigned long DISPLAY_INTERVAL = 700;
 
 unsigned long lastDHTRead = 0;
 unsigned long lastBlink = 0;
@@ -45,15 +37,15 @@ unsigned long lastDisplayUpdate = 0;
 float currentTemp = NAN;
 float currentHum = NAN;
 float tempReference = 25.0;
-int humThreshold = 50; // generado al inicio
+int humThreshold = 50;
 bool ventState = false;
 bool prevVentState = false;
 bool watering = false;
 bool prevWatering = false;
 bool blinkLedState = false;
 
-// Histeresis (para evitar oscilaciones)
-const float VENT_HYST = 0.5f; // grados C
+// Histeresis
+const float VENT_HYST = 0.5f;
 
 // Sistema de menú
 enum MenuState {
@@ -72,9 +64,9 @@ bool menuChanged = true;
 bool sensorsUpdated = false;
 
 // Control manual
-bool manualMode = false;
 bool manualVentOverride = false;
 bool manualRiegoOverride = false;
+
 
 // Boton debounce
 int lastButtonReading = HIGH;
@@ -85,18 +77,6 @@ unsigned long ignoreButtonUntil = 0;
 
 void logEvent(const char* msg) {
   Serial.println(msg);
-}
-
-void printMenuHelp() {
-  Serial.println("\n=== COMANDOS DISPONIBLES ===");
-  Serial.println("TEMP <valor>     - Configurar temperatura de referencia (10-50°C)");
-  Serial.println("HUM <valor>      - Configurar umbral de humedad (20-80%)");
-  Serial.println("VENT ON/OFF      - Control manual de ventilación");
-  Serial.println("RIEGO ON/OFF     - Control manual de riego");
-  Serial.println("AUTO             - Volver al modo automático");
-  Serial.println("STATUS           - Mostrar estado completo");
-  Serial.println("HELP             - Mostrar esta ayuda");
-  Serial.println("=============================\n");
 }
 
 void setup() {
@@ -122,34 +102,32 @@ void setup() {
   pinMode(LED_RIEGO_PIN, OUTPUT);
   digitalWrite(LED_RIEGO_PIN, LOW);
 
-  // --- IMPORTANTE: configurar el botón ANTES de leer su estado
-  pinMode(BUTTON_PIN, INPUT_PULLUP);        // usamos pull-up interno
+  // configuracion del botón
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
   lastButtonReading = digitalRead(BUTTON_PIN);
   buttonState = lastButtonReading;
   lastDebounceTime = millis();
-  ignoreButtonUntil = millis() + 300;      // ignorar 300 ms tras arranque
+  ignoreButtonUntil = millis() + 300;
   Serial.print("Button init reading: ");
   Serial.println(lastButtonReading);
 
-  // Configurar ADC del potenciómetro (ESP32)
+  // Configurar ADC del potenciómetro
   #if defined(ARDUINO_ARCH_ESP32)
     analogSetPinAttenuation(POT_PIN, ADC_11db);
   #endif
 
-  // Semilla aleatoria (ESP32)
+  // Semilla aleatoria
   randomSeed((uint32_t)esp_random());
 
-  // Umbral aleatorio [40..60]
+  // Umbral aleatorio
   humThreshold = random(40, 61);
   Serial.println("=== Inicio del sistema ===");
   Serial.print("Umbral de humedad generado: ");
   Serial.print(humThreshold);
   Serial.println("%");
   
-  // Mostrar ayuda de comandos
-  printMenuHelp();
 
-  // Mostrar umbral de inicio en OLED (3s)
+  // Mostrar umbral de inicio en OLED
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0, 0);
@@ -164,7 +142,7 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  // Primera lectura para inicializar variables
+  // Primera lectura de inicializacion de variables
   lastDHTRead = millis() - DHT_INTERVAL;
   sensorsUpdated = true;
   menuChanged = true;
@@ -177,7 +155,7 @@ void updateDisplay() {
 
   switch (currentMenu) {
     case MENU_MAIN:
-      //display.println("=== MENU PRINCIPAL ===");
+      //display.println("*** MENU PRINCIPAL ***");
       display.println("1. Temp Actual");
       display.println("2. Humedad Actual");
       display.println("3. Estado Completo");
@@ -185,10 +163,6 @@ void updateDisplay() {
       display.println("5. Config Hum");
       display.println("6. Manual Vent");
       display.println("7. Manual Riego");
-      display.setTextSize(1);
-      display.setCursor(0, 56);
-      display.print("Modo: ");
-      display.print(manualMode ? "manual" : "auto");
       break;
 
     case MENU_TEMP_DISPLAY:
@@ -228,9 +202,6 @@ void updateDisplay() {
       display.print("Umbral:");
       display.print(humThreshold);
       display.print("%");
-      display.setCursor(0, 54);
-      display.print("Riego: ");
-      display.print(watering ? "ON" : "OFF");
       break;
 
     case MENU_FULL_STATUS:
@@ -307,8 +278,6 @@ void updateDisplay() {
       display.print(ventState ? "ON" : "OFF");
       display.setTextSize(1);
       display.setCursor(0, 42);
-      display.print("Manual: ");
-      display.print(manualVentOverride ? "SI" : "NO");
       break;
 
     case MENU_MANUAL_RIEGO:
@@ -319,11 +288,10 @@ void updateDisplay() {
       display.print(watering ? "ON" : "OFF");
       display.setTextSize(1);
       display.setCursor(0, 42);
-      display.print("Manual: ");
-      display.print(manualRiegoOverride ? "SI" : "NO");
       display.setCursor(0, 54);
       display.println("Usar potenciometro");
       break;
+
   }
 
   display.display();
@@ -338,33 +306,30 @@ void readSensors() {
     float t = dht.readTemperature();
     if (isnan(h) || isnan(t)) {
       Serial.println("Warning: lectura DHT fallida");
-      // no sobreescribir si falló (mantenemos último valor válido)
     } else {
       currentHum = h;
       currentTemp = t;
       sensorsUpdated = true;
     }
 
-    // Leer potenciómetro (ADC 12-bit: 0..4095)
+    // Lectura potenciómetro
     int potRaw = analogRead(POT_PIN);
     
-    // Modificar diferentes variables según el menú actual
+    // Modificacion de variables segun opcion del menú
     if (currentMenu == MENU_CONFIG_HUM) {
-      // En configuración de humedad, simular humedad modificada (40..60%)
+      //Simular humedad modificada
       currentHum = (potRaw / 4095.0f) * 20.0f + 40.0f;
+      manualRiegoOverride = false;
     } else if (currentMenu == MENU_MANUAL_RIEGO) {
-      // En control manual de riego, activar/desactivar según potenciómetro
-      if (potRaw > 2047) { // Más de la mitad
+      //control manual de riego
+      if (potRaw > 2047) {
         manualRiegoOverride = true;
         watering = true;
-        manualMode = true;
       } else {
         manualRiegoOverride = true;
         watering = false;
-        manualMode = true;
       }
-    } else {
-      // En otros menús, mapear a 10..50°C (temperatura)
+    } else if (currentMenu == MENU_CONFIG_TEMP) {
       tempReference = (potRaw / 4095.0f) * 40.0f + 10.0f;
     }
     sensorsUpdated = true;
@@ -375,7 +340,6 @@ void handleVentilationAndIrrigation() {
   // Ventilación - automática o manual
   bool newVentState = ventState;
   if (manualVentOverride) {
-    // Control manual - mantener estado actual
     newVentState = ventState;
   } else {
     // Control automático con histeresis
@@ -384,7 +348,7 @@ void handleVentilationAndIrrigation() {
         newVentState = true;
       } else if (currentTemp < tempReference - VENT_HYST) {
         newVentState = false;
-      } // si está dentro de la banda, no cambiar
+      }
     }
   }
   
@@ -399,31 +363,30 @@ void handleVentilationAndIrrigation() {
   ventState = newVentState;
   digitalWrite(LED_VENT_PIN, ventState ? HIGH : LOW);
 
-  // Riego - automático o manual
+  // Riego automático - manual
   bool shouldWater = false;
   if (manualRiegoOverride) {
-    // Control manual - mantener estado actual
+    // Control manual
     shouldWater = watering;
   } else {
-    // Control automático (humedad < umbral)
+    // Control automático
     if (!isnan(currentHum)) {
       shouldWater = (currentHum < (float)humThreshold);
     }
   }
   
-  // eventos riego (usar prevWatering)
+  // eventos riego
   if (shouldWater && !prevWatering) {
     Serial.println("Evento: RIEGO ACTIVADO (humedad por debajo del umbral)");
   } else if (!shouldWater && prevWatering) {
     Serial.println("Evento: RIEGO DETENIDO (humedad OK)");
-    // asegurar LED apagado
     digitalWrite(LED_RIEGO_PIN, LOW);
     blinkLedState = false;
   }
   watering = shouldWater;
   prevWatering = shouldWater;
 
-  // Si riego -> parpadeo
+  // parpadeo
   if (watering) {
     unsigned long now = millis();
     if (now - lastBlink >= BLINK_INTERVAL) {
@@ -441,7 +404,7 @@ void handleButton() {
 
   int reading = digitalRead(BUTTON_PIN);
 
-  // Detectar cambios de estado con debounce
+  // Detectar estados
   if (reading != lastButtonReading) {
     lastDebounceTime = millis();
     lastButtonReading = reading;
@@ -450,16 +413,14 @@ void handleButton() {
   if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
     if (reading != buttonState) {
       buttonState = reading;
-      if (buttonState == LOW) { // Botón presionado
+      if (buttonState == LOW) {
         // Navegación del menú
         if (currentMenu == MENU_MAIN) {
-          // Desde menú principal, ir a la primera opción
           currentMenu = MENU_TEMP_DISPLAY;
         } else {
-          // Ciclar entre opciones
           currentMenu = (currentMenu + 1) % 8;
           if (currentMenu == MENU_MAIN) {
-            currentMenu = MENU_TEMP_DISPLAY; // Saltar el menú principal en el ciclo
+            currentMenu = MENU_TEMP_DISPLAY;
           }
         }
         menuChanged = true;
@@ -503,35 +464,30 @@ void handleSerialCommands() {
     else if (command == "VENT ON") {
       manualVentOverride = true;
       ventState = true;
-      manualMode = true;
       Serial.println("Ventilación activada manualmente");
       menuChanged = true;
     }
     else if (command == "VENT OFF") {
       manualVentOverride = true;
       ventState = false;
-      manualMode = true;
       Serial.println("Ventilación desactivada manualmente");
       menuChanged = true;
     }
     else if (command == "RIEGO ON") {
       manualRiegoOverride = true;
       watering = true;
-      manualMode = true;
       Serial.println("Riego activado manualmente");
       menuChanged = true;
     }
     else if (command == "RIEGO OFF") {
       manualRiegoOverride = true;
       watering = false;
-      manualMode = true;
       Serial.println("Riego desactivado manualmente");
       menuChanged = true;
     }
     else if (command == "AUTO") {
       manualVentOverride = false;
       manualRiegoOverride = false;
-      manualMode = false;
       Serial.println("Modo automático activado");
       menuChanged = true;
     }
@@ -561,12 +517,7 @@ void handleSerialCommands() {
       Serial.println(ventState ? "ACTIVA" : "INACTIVA");
       Serial.print("Riego: ");
       Serial.println(watering ? "ACTIVO" : "INACTIVO");
-      Serial.print("Modo: ");
-      Serial.println(manualMode ? "MANUAL" : "AUTOMATICO");
       Serial.println("=====================================\n");
-    }
-    else if (command == "HELP") {
-      printMenuHelp();
     }
     else if (command.length() > 0) {
       Serial.println("Comando no reconocido. Escriba HELP para ver comandos disponibles.");
@@ -574,21 +525,18 @@ void handleSerialCommands() {
   }
 }
 
-
-
 void loop() {
   readSensors();
   handleVentilationAndIrrigation();
   handleButton();
   handleSerialCommands();
 
-  // Actualizar display solo cuando hay nuevas lecturas, cambio de menú, o timeout
+  // Actualizar display
   if (sensorsUpdated || menuChanged || (millis() - lastDisplayUpdate >= DISPLAY_INTERVAL)) {
     updateDisplay();
     sensorsUpdated = false;
     menuChanged = false;
   }
 
-  // pequeño delay para no saturar loop
   delay(10);
 }
