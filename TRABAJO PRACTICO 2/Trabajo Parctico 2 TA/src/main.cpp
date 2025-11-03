@@ -18,11 +18,11 @@
 #include <ThingSpeak.h>
 
 // -CONFIG (rellenar) ACA PONER EL SSID DE SU CELULAR, CONTRASEÑA Y EL TOKEN DEL BOOT DE TELEGRAM---------------------
-const char* WIFI_SSID = "TU_SSID_CELULAR";
-const char* WIFI_PASS = "TU_PASS_CELULAR";
+const char* WIFI_SSID = "Wokwi-GUEST";
+const char* WIFI_PASS = "";
 
-#define BOT_TOKEN "TU_BOT_TOKEN_AQUI"
-#define CHAT_ID "TU_CHAT_ID_AQUI" // string or number
+#define BOT_TOKEN "8418403288:AAEELmrXorRXQa4yKrGQS8_FAS45WUx6bkU"
+#define CHAT_ID "8575102499" // string or number
 
 // ThingSpeak (opcional)
 const char* THINGSPEAK_SERVER = "api.thingspeak.com";

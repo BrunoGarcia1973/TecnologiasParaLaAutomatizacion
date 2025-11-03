@@ -46,5 +46,6 @@
     [ "led2:A", "esp:2", "green", [ "v0" ] ],
     [ "led2:C", "esp:GND.3", "green", [ "v0" ] ]
   ],
+  "wokwi-wifi": {},
   "dependencies": {}
 }
