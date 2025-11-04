@@ -21,13 +21,13 @@
 const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASS = "";
 
-#define BOT_TOKEN "8418403288:AAEELmrXorRXQa4yKrGQS8_FAS45WUx6bkU"
-#define CHAT_ID "8575102499" // string or number
+#define BOT_TOKEN ""
+#define CHAT_ID "" // string or number
 
 // ThingSpeak (opcional)
 const char* THINGSPEAK_SERVER = "api.thingspeak.com";
-const char* THINGSPEAK_API_KEY = "TU_THINGSPEAK_APIKEY";
-unsigned long THINGSPEAK_CHANNEL_ID = 123456; // reemplazar si usás ThingSpeak
+const char* THINGSPEAK_API_KEY = "KBVBHYA1LJA4Z6Y1"; // Reemplazar con tu Write API Key de ThingSpeak (16 caracteres)
+unsigned long THINGSPEAK_CHANNEL_ID = 3145865; // Reemplazar con tu Channel ID de ThingSpeak
 
 // --------------------- PINES ---------------------
 #define DHTPIN 4
@@ -64,6 +64,10 @@ float currentHum = NAN;
 
 bool ledGreen = false;
 bool ledBlue = false;
+
+// Control de envío a ThingSpeak (mínimo 15 segundos entre escrituras)
+unsigned long lastThingSpeakWrite = 0;
+const unsigned long THINGSPEAK_INTERVAL = 15000; // 15 segundos
 
 // --------------------- Helpers ---------------------
 String formatFloat(float v, int decimals=1) {
@@ -218,20 +222,52 @@ void handleTelegramMessage(int i) {
 
   // /platiot -> enviar a ThingSpeak (ejemplo)
   if (text == "/platiot") {
+    // Verificar tiempo mínimo entre escrituras (15 segundos)
+    unsigned long currentTime = millis();
+    if (currentTime - lastThingSpeakWrite < THINGSPEAK_INTERVAL) {
+      unsigned long waitTime = (THINGSPEAK_INTERVAL - (currentTime - lastThingSpeakWrite)) / 1000;
+      bot.sendMessage(chat_id, "⏳ Espera " + String(waitTime) + " segundos antes de enviar datos nuevamente", "");
+      return;
+    }
+    
     float h = dht.readHumidity();
     float t = dht.readTemperature();
     if (isnan(h) || isnan(t)) {
-      bot.sendMessage(chat_id, "Error lectura DHT22, no se envía a IoT", "");
+      bot.sendMessage(chat_id, "❌ Error lectura DHT22, no se envía a IoT", "");
       return;
     }
+    
+    // Mostrar datos que se van a enviar
+    Serial.println("=== Enviando a ThingSpeak ===");
+    Serial.printf("Temperatura: %.1f °C\n", t);
+    Serial.printf("Humedad: %.1f %%\n", h);
+    Serial.printf("Channel ID: %lu\n", THINGSPEAK_CHANNEL_ID);
+    
     // Enviar a ThingSpeak (field1=temp, field2=hum)
     ThingSpeak.setField(1, t);
     ThingSpeak.setField(2, h);
     int response = ThingSpeak.writeFields(THINGSPEAK_CHANNEL_ID, THINGSPEAK_API_KEY);
+    
+    Serial.printf("Respuesta ThingSpeak: %d\n", response);
+    
     if (response == 200) {
-      bot.sendMessage(chat_id, "Datos enviados a ThingSpeak OK", "");
+      lastThingSpeakWrite = currentTime; // Actualizar timestamp solo si fue exitoso
+      String msg = "✅ Datos enviados a ThingSpeak OK\n";
+      msg += "🌡️ Temp: " + formatFloat(t,1) + " °C\n";
+      msg += "💧 Hum: " + formatFloat(h,1) + " %";
+      bot.sendMessage(chat_id, msg, "");
     } else {
-      bot.sendMessage(chat_id, "Error al enviar a ThingSpeak, code: " + String(response), "");
+      String errorMsg = "❌ Error al enviar a ThingSpeak\nCódigo: " + String(response) + "\n";
+      if (response == 0) {
+        errorMsg += "Causa: Sin conexión a Internet";
+      } else if (response == 400) {
+        errorMsg += "Causa: API Key o Channel ID inválidos";
+      } else if (response == 404) {
+        errorMsg += "Causa: Canal no encontrado";
+      } else if (response == -301) {
+        errorMsg += "Causa: Tiempo de espera agotado";
+      }
+      bot.sendMessage(chat_id, errorMsg, "");
     }
     return;
   }
